@@ -56,7 +56,7 @@ async function aiMatch(myPost, candidates) {
     mode: p.mode, tags: p.tags, note: p.note,
     topics: p.topics, likes: p.likes, comments: p.comments, date: p.date,
   }));
-  const res = await fetch("http://localhost:3001/embedding-match", {
+  const res = await fetch("/api/embedding-match", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ myText, list }),
