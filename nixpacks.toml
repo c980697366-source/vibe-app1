@@ -1,0 +1,8 @@
+[phases.install]
+cmds = ["npm install --legacy-peer-deps"]
+
+[phases.build]
+cmds = ["CI=false react-scripts build"]
+
+[start]
+cmd = "node server.js"
