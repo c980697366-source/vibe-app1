@@ -3,7 +3,7 @@ import { db, auth } from "./firebase";
 import {
   collection, addDoc, getDocs, query, orderBy,
   doc, updateDoc, arrayUnion, onSnapshot,
-  where, setDoc, getDoc, 
+  where, setDoc, getDoc
 } from "firebase/firestore";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 
@@ -147,6 +147,9 @@ export default function App() {
   const [upgradeTarget, setUpgradeTarget] = useState(null);
   const [currentHint, setCurrentHint] = useState(0);
   const [friendIds, setFriendIds] = useState([]); // 已经聊过的用户
+  const [following, setFollowing] = useState([]); // 我关注的人
+  const [followers, setFollowers] = useState([]); // 关注我的人
+  const [extraQuota, setExtraQuota] = useState(0); // 邀请获得的额外额度
 
   // 轮换提示语
   useEffect(() => {
@@ -198,6 +201,63 @@ export default function App() {
     setSetupSaving(false);
   };
 
+  // 加载关注/粉丝关系
+  const fetchFollows = useCallback(async () => {
+    if (!user) return;
+    const followingSnap = await getDocs(query(collection(db, "follows"), where("fromId", "==", user.uid)));
+    setFollowing(followingSnap.docs.map(d => d.data().toId));
+    const followerSnap = await getDocs(query(collection(db, "follows"), where("toId", "==", user.uid)));
+    setFollowers(followerSnap.docs.map(d => d.data().fromId));
+  }, [user]);
+
+  useEffect(() => { fetchFollows(); }, [fetchFollows]);
+
+  // 关注/取消关注
+  const handleFollow = async (targetUserId) => {
+    if (!user) return;
+    const followId = `${user.uid}_${targetUserId}`;
+    const ref = doc(db, "follows", followId);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      await snap.ref.delete ? snap.ref.delete() : updateDoc(ref, { deleted: true });
+      setFollowing(prev => prev.filter(id => id !== targetUserId));
+    } else {
+      await setDoc(ref, { fromId: user.uid, toId: targetUserId, createdAt: Date.now() });
+      setFollowing(prev => [...prev, targetUserId]);
+    }
+  };
+
+  // 加载额外额度
+  const fetchExtraQuota = useCallback(async () => {
+    if (!user) return;
+    const ref = doc(db, "inviteQuota", user.uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) setExtraQuota(snap.data().extra || 0);
+  }, [user]);
+
+  useEffect(() => { fetchExtraQuota(); }, [fetchExtraQuota]);
+
+  // 注册时检测邀请码
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (!ref || ref === user.uid) return;
+    // 给邀请人加3条额度
+    const addQuota = async () => {
+      const inviterRef = doc(db, "inviteQuota", ref);
+      const snap = await getDoc(inviterRef);
+      if (snap.exists()) {
+        await updateDoc(inviterRef, { extra: (snap.data().extra || 0) + 3 });
+      } else {
+        await setDoc(inviterRef, { extra: 3 });
+      }
+      // 清除URL参数避免重复计算
+      window.history.replaceState({}, "", window.location.pathname);
+    };
+    addQuota();
+  }, [user]);
+
   // 加载聊天列表
   const fetchChatList = useCallback(async () => {
     if (!user) return;
@@ -248,8 +308,8 @@ export default function App() {
 
   const handlePost = async () => {
     if (!user || !profile) return alert("请先登录");
-    if (isMatchPost && myTodayMatchCount >= MATCH_QUOTA) {
-      return alert(`今日匹配额度已用完（${MATCH_QUOTA}条）`);
+    if (isMatchPost && myTodayMatchCount >= totalQuota) {
+      return alert(`今日匹配额度已用完（${totalQuota}条）`);
     }
     const { mentions, topics } = parseMentionsAndTopics(postText);
     await addDoc(collection(db, "posts"), {
@@ -272,7 +332,7 @@ export default function App() {
   };
 
   const handleUpgrade = async (post) => {
-    if (myTodayMatchCount >= MATCH_QUOTA) return alert(`今日匹配额度已满`);
+    if (myTodayMatchCount >= totalQuota) return alert(`今日匹配额度已满`);
     await updateDoc(doc(db, "posts", post.id), { isMatchPost: true });
     setUpgradeTarget(null);
     await fetchPosts();
@@ -395,13 +455,18 @@ export default function App() {
   };
 
   const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
-  const remaining = MATCH_QUOTA - myTodayMatchCount;
+  const totalQuota = MATCH_QUOTA + extraQuota;
+  const remaining = totalQuota - myTodayMatchCount;
   const myTodayMatchPosts = posts.filter(p => p.userId === user?.uid && p.isMatchPost && isWithin24h(p.createdAt));
 
-  // 大厅显示：公开的动态
+  // 互关用户列表
+  const mutualIds = following.filter(id => followers.includes(id));
+
+  // 大厅显示：根据可见性和关注关系过滤
   const publicPosts = posts.filter(p => {
-    if (p.visibility === "mutual") return friendIds.includes(p.userId);
-    if (p.visibility === "followers") return friendIds.includes(p.userId) || p.userId === user?.uid;
+    if (p.userId === user?.uid) return true; // 自己的帖子始终可见
+    if (p.visibility === "mutual") return mutualIds.includes(p.userId);
+    if (p.visibility === "followers") return following.includes(p.userId);
     return true; // public
   });
 
@@ -473,7 +538,7 @@ export default function App() {
   return (
     <div style={s.container}>
       <header style={s.header}>
-        <span style={s.logo}>⚡ vibe</span>
+        <span style={s.logo}>⚡ 氛围</span>
         <div style={s.headerRight}>
           <span style={s.userLabel} onClick={() => openProfile(user.uid, profile?.nickname)}>
             <span style={{
@@ -507,7 +572,7 @@ export default function App() {
           <div style={s.quotaBar}>
             <span style={{ color: "#666", fontSize: 13 }}>今日匹配额度</span>
             <div style={s.quotaDots}>
-              {Array.from({ length: MATCH_QUOTA }).map((_, i) => (
+              {Array.from({ length: totalQuota }).map((_, i) => (
                 <div key={i} style={{ ...s.quotaDot, background: i < myTodayMatchCount ? "#f97316" : "#e5e7eb" }} />
               ))}
             </div>
@@ -605,7 +670,7 @@ export default function App() {
               openComments={openComments} setOpenComments={setOpenComments}
               onLike={handleLike} onComment={handleComment}
               onChat={openChat} onProfile={openProfile} onTopic={openTopic}
-              onUpgrade={myTodayMatchCount < MATCH_QUOTA ? setUpgradeTarget : null}
+              onUpgrade={myTodayMatchCount < totalQuota ? setUpgradeTarget : null}
               isWithin24h={isWithin24h}
             />
           ))}
@@ -747,10 +812,20 @@ export default function App() {
               {profilePosts.filter(p => p.isMatchPost).length} 条匹配动态 · {profilePosts.filter(p => !p.isMatchPost).length} 条普通动态
             </div>
             {profileTarget.userId !== user.uid && (
-              <button style={{ ...s.btnOrange, marginTop: 12 }}
-                onClick={() => openChat(profileTarget.userId, profileTarget.nickname)}>
-                💬 发消息
-              </button>
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12 }}>
+                <button
+                  style={following.includes(profileTarget.userId)
+                    ? { ...s.btnSmall, marginTop: 0 }
+                    : { ...s.btnOrange }}
+                  onClick={() => handleFollow(profileTarget.userId)}
+                >
+                  {following.includes(profileTarget.userId) ? "✓ 已关注" : "+ 关注"}
+                </button>
+                <button style={s.btnOrange}
+                  onClick={() => openChat(profileTarget.userId, profileTarget.nickname)}>
+                  💬 发消息
+                </button>
+              </div>
             )}
           </div>
           <div style={s.sectionTitle}>全部动态</div>
@@ -882,7 +957,7 @@ function PostCard({ post, user, profile, commentInputs, setCommentInputs,
 const s = {
   container: { maxWidth: 600, margin: "0 auto", padding: "0 16px 100px", fontFamily: "'PingFang SC', 'Helvetica Neue', sans-serif", background: "#f8f8f6", minHeight: "100vh" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: "1px solid #eee", position: "sticky", top: 0, background: "#f8f8f6", zIndex: 10 },
-  logo: { fontSize: 22, fontWeight: 800, color: "#f97316", letterSpacing: 0 },
+  logo: { fontSize: 22, fontWeight: 800, color: "#f97316", letterSpacing: -1 },
   headerRight: { display: "flex", alignItems: "center", gap: 10 },
   userLabel: { fontSize: 13, color: "#555", cursor: "pointer", display: "flex", alignItems: "center" },
   nav: { display: "flex", gap: 8, padding: "12px 0" },
