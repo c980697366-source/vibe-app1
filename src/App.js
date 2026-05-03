@@ -3,7 +3,7 @@ import { db, auth } from "./firebase";
 import {
   collection, addDoc, getDocs, query, orderBy,
   doc, updateDoc, arrayUnion, onSnapshot,
-  where, setDoc, getDoc, deleteDoc
+  where, setDoc, getDoc, 
 } from "firebase/firestore";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 
