@@ -882,7 +882,7 @@ function PostCard({ post, user, profile, commentInputs, setCommentInputs,
 const s = {
   container: { maxWidth: 600, margin: "0 auto", padding: "0 16px 100px", fontFamily: "'PingFang SC', 'Helvetica Neue', sans-serif", background: "#f8f8f6", minHeight: "100vh" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: "1px solid #eee", position: "sticky", top: 0, background: "#f8f8f6", zIndex: 10 },
-  logo: { fontSize: 22, fontWeight: 800, color: "#f97316", letterSpacing: -1 },
+  logo: { fontSize: 22, fontWeight: 800, color: "#f97316", letterSpacing: 0 },
   headerRight: { display: "flex", alignItems: "center", gap: 10 },
   userLabel: { fontSize: 13, color: "#555", cursor: "pointer", display: "flex", alignItems: "center" },
   nav: { display: "flex", gap: 8, padding: "12px 0" },
