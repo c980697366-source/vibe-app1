@@ -296,16 +296,29 @@ const fetchPosts = useCallback(async () => {
     <p style={s.loginSub}>每天更新状态，匹配此刻互补的人</p>
     <input id="email" type="email" placeholder="输入邮箱" style={{...s.input, marginBottom: 8}} />
     <input id="password" type="password" placeholder="输入密码" style={{...s.input, marginBottom: 16}} />
-    <button style={s.btnPrimary} onClick={() => {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      import("firebase/auth").then(({ signInWithEmailAndPassword, createUserWithEmailAndPassword }) => {
-        signInWithEmailAndPassword(auth, email, password)
-          .catch(() => createUserWithEmailAndPassword(auth, email, password));
-      });
-    }}>
-      一键登录 / 注册
-    </button>
+<button style={s.btnPrimary} onClick={() => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  import("firebase/auth").then(({ signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification }) => {
+    signInWithEmailAndPassword(auth, email, password)
+      .then((uc) => {
+        if (!uc.user.emailVerified) {
+          alert("请先验证邮箱，验证邮件已发送，请检查收件箱！");
+          sendEmailVerification(uc.user);
+          signOut(auth);
+        }
+      })
+      .catch(() => createUserWithEmailAndPassword(auth, email, password)
+        .then((uc) => {
+          sendEmailVerification(uc.user);
+          alert("注册成功！验证邮件已发送，请检查收件箱后再登录。");
+          signOut(auth);
+        })
+      );
+  });
+}}>
+  一键登录 / 注册
+</button>
   </div>
 )}
 
