@@ -10,6 +10,79 @@ import { signOut, onAuthStateChanged } from "firebase/auth";
 const MATCH_QUOTA = 3;
 const MATCH_WINDOW_MS = 24 * 60 * 60 * 1000; // 24小时
 
+const LANG = {
+  zh: {
+    appName: "氛围", tagline: "找到今天需要的人",
+    feed: "广场", match: "匹配", chats: "消息",
+    post: "发布", postMatch: "匹配动态", postNormal: "普通动态",
+    modeLabel: "今天的模式", tagLabel: "需求标签（最多3个）",
+    visibility: "可见性", public: "🌐 公开", followers: "👥 粉丝", mutual: "🔒 互关",
+    publish: "发布", quotaFull: "今日匹配额度已满",
+    remaining: (n) => `剩余 ${n} 条`,
+    publishRemaining: (n) => `发布（剩余 ${n} 条）`,
+    todayPosts: "今日动态", noPosts: "暂无动态，快来发第一条吧",
+    todayMatch: "今日匹配", startMatch: "开始匹配", matching: "匹配中...",
+    noMatch: "暂时没有匹配的人，稍后再试～", rematch: "重新匹配",
+    matchScore: (n) => `匹配度 ${n}%`,
+    startChat: "💬 发起聊天", chatWith: (n) => `与 ${n} 聊天`,
+    send: "发送", sendHint: "说点什么...", noMessages: "发个消息打个招呼吧 👋",
+    back: "← 返回", close: "关闭",
+    follow: "+ 关注", following: "✓ 已关注", message: "💬 发消息",
+    matchPosts: (n) => `${n} 条匹配动态`, normalPosts: (n) => `${n} 条普通动态`,
+    allPosts: "全部动态", noPosts2: "暂无动态",
+    setupTitle: "设置你的昵称", setupSub: "让其他人认识你",
+    nicknamePlaceholder: "输入你的昵称（2-12个字）",
+    enter: "进入氛围 →", saving: "保存中...",
+    login: "一键登录 / 注册", emailPlaceholder: "输入邮箱", passwordPlaceholder: "输入密码（6位以上）",
+    quotaBar: "今日匹配额度", inviteText: "邀请好友解锁额外3条 →",
+    inviteAlert: (link) => `邀请链接已复制！\n${link}\n邀请1位好友注册，获得额外3条额度`,
+    quotaUsed: "今日额度已用完 ·",
+    upgradeTitle: "升级为匹配动态？", upgradeConfirm: "确认升级", cancel: "取消",
+    upgradeSub: (n) => `将占用今日 1 条匹配额度（剩余 ${n} 条），升级后参与今日匹配。`,
+    needPostFirst: "请先发布匹配动态才能发起新的聊天",
+    needPost: "请先发布匹配动态",
+    writeComment: "写评论...", commentSend: "发送",
+    upgradeMatch: "升级匹配", logout: "退出",
+    noChats: "还没有聊天记录，去匹配认识新朋友吧",
+    clickChat: "点击继续聊天",
+  },
+  en: {
+    appName: "Vibe", tagline: "Find who you need today",
+    feed: "Feed", match: "Match", chats: "Chats",
+    post: "Post", postMatch: "Match Post", postNormal: "Normal Post",
+    modeLabel: "Today's mode", tagLabel: "Tags (up to 3)",
+    visibility: "Visibility", public: "🌐 Public", followers: "👥 Followers", mutual: "🔒 Mutual",
+    publish: "Post", quotaFull: "Daily quota used up",
+    remaining: (n) => `${n} left`,
+    publishRemaining: (n) => `Post (${n} left)`,
+    todayPosts: "Today's Posts", noPosts: "No posts yet, be the first!",
+    todayMatch: "Today's Matches", startMatch: "Start Matching", matching: "Matching...",
+    noMatch: "No matches yet, try again later~", rematch: "Rematch",
+    matchScore: (n) => `Match ${n}%`,
+    startChat: "💬 Start Chat", chatWith: (n) => `Chat with ${n}`,
+    send: "Send", sendHint: "Say something...", noMessages: "Say hi to start the conversation 👋",
+    back: "← Back", close: "Close",
+    follow: "+ Follow", following: "✓ Following", message: "💬 Message",
+    matchPosts: (n) => `${n} match posts`, normalPosts: (n) => `${n} normal posts`,
+    allPosts: "All Posts", noPosts2: "No posts",
+    setupTitle: "Set your nickname", setupSub: "Let others know you",
+    nicknamePlaceholder: "Enter nickname (2-12 chars)",
+    enter: "Enter Vibe →", saving: "Saving...",
+    login: "Login / Register", emailPlaceholder: "Enter email", passwordPlaceholder: "Password (6+ chars)",
+    quotaBar: "Daily quota", inviteText: "Invite friends for 3 more →",
+    inviteAlert: (link) => `Link copied!\n${link}\nInvite 1 friend to unlock 3 more posts`,
+    quotaUsed: "Quota used up ·",
+    upgradeTitle: "Upgrade to Match Post?", upgradeConfirm: "Confirm", cancel: "Cancel",
+    upgradeSub: (n) => `Uses 1 quota (${n} left). Will join today's matching.`,
+    needPostFirst: "Post a match post first to start chatting",
+    needPost: "Post a match post first",
+    writeComment: "Write a comment...", commentSend: "Send",
+    upgradeMatch: "Upgrade", logout: "Logout",
+    noChats: "No chats yet, go match someone!",
+    clickChat: "Click to continue",
+  }
+};
+
 const COMPLEMENT_MAP = {
   想倾诉: ["想倾听"], 想倾听: ["想倾诉"],
   找饭搭子: ["找饭搭子"], 找运动伙伴: ["找运动伙伴"],
@@ -146,10 +219,12 @@ export default function App() {
   const [topicPosts, setTopicPosts] = useState([]);
   const [upgradeTarget, setUpgradeTarget] = useState(null);
   const [currentHint, setCurrentHint] = useState(0);
-  const [friendIds, setFriendIds] = useState([]); // 已经聊过的用户
-  const [following, setFollowing] = useState([]); // 我关注的人
-  const [followers, setFollowers] = useState([]); // 关注我的人
-  const [extraQuota, setExtraQuota] = useState(0); // 邀请获得的额外额度
+  const [friendIds, setFriendIds] = useState([]);
+  const [following, setFollowing] = useState([]);
+  const [followers, setFollowers] = useState([]);
+  const [extraQuota, setExtraQuota] = useState(0);
+  const [lang, setLang] = useState("zh");
+  const t = LANG[lang];
 
   // 轮换提示语
   useEffect(() => {
@@ -342,7 +417,7 @@ export default function App() {
     const myMatchPosts = posts.filter(p =>
       p.userId === user?.uid && p.isMatchPost && isWithin24h(p.createdAt)
     );
-    if (myMatchPosts.length === 0) return alert("请先发布匹配动态");
+    if (myMatchPosts.length === 0) return alert(t.needPost);
     setMatchLoading(true);
     setView("match");
     const myPost = myMatchPosts[0];
@@ -374,7 +449,7 @@ export default function App() {
     const text = commentInputs[post.id];
     if (!text?.trim()) return;
     await updateDoc(doc(db, "posts", post.id), {
-      comments: arrayUnion({ user: profile.nickname, text, time: Date.now() })
+      comments: arrayUnion({ user: profile.nickname, userId: user.uid, text, time: Date.now() })
     });
     setCommentInputs({ ...commentInputs, [post.id]: "" });
     fetchPosts();
@@ -387,7 +462,7 @@ export default function App() {
       const myMatchPosts = posts.filter(p =>
         p.userId === user?.uid && p.isMatchPost && isWithin24h(p.createdAt)
       );
-      if (myMatchPosts.length === 0) return alert("请先发布匹配动态才能发起新的聊天");
+      if (myMatchPosts.length === 0) return alert(t.needPostFirst);
     }
     setChatTarget({ userId: targetUserId, nickname: targetNickname });
     setView("chat");
@@ -476,8 +551,8 @@ export default function App() {
       <div style={s.container}>
         <div style={s.setupBox}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>⚡</div>
-          <h2 style={s.loginTitle}>设置你的昵称</h2>
-          <p style={s.loginSub}>让其他人认识你</p>
+          <h2 style={s.loginTitle}>{t.setupTitle}</h2>
+          <p style={s.loginSub}>{t.setupSub}</p>
           <div style={{
             width: 72, height: 72, borderRadius: "50%",
             background: getAvatarColor(user.uid),
@@ -489,7 +564,7 @@ export default function App() {
           </div>
           <input
             style={s.input}
-            placeholder="输入你的昵称（2-12个字）"
+            placeholder={t.nicknamePlaceholder}
             value={setupNickname}
             maxLength={12}
             onChange={e => setSetupNickname(e.target.value)}
@@ -500,7 +575,7 @@ export default function App() {
             onClick={handleSaveSetup}
             disabled={setupSaving}
           >
-            {setupSaving ? "保存中..." : "进入氛围 →"}
+            {setupSaving ? t.saving : t.enter}
           </button>
         </div>
       </div>
@@ -512,22 +587,26 @@ export default function App() {
     return (
       <div style={s.container}>
         <div style={s.loginBox}>
+          <div style={{ position: "absolute", top: 16, right: 16 }}>
+            <button style={{ ...s.btnSmall, fontWeight: lang === "zh" ? 700 : 400 }} onClick={() => setLang("zh")}>中</button>
+            <button style={{ ...s.btnSmall, fontWeight: lang === "en" ? 700 : 400, marginLeft: 4 }} onClick={() => setLang("en")}>EN</button>
+          </div>
           <div style={s.loginEmoji}>⚡</div>
-          <h2 style={s.loginTitle}>氛围</h2>
-          <p style={s.loginSub}>找到今天需要的人</p>
-          <input id="email" type="email" placeholder="输入邮箱" style={{ ...s.input, marginBottom: 8 }} />
-          <input id="password" type="password" placeholder="输入密码（6位以上）" style={{ ...s.input, marginBottom: 16 }} />
+          <h2 style={s.loginTitle}>{t.appName}</h2>
+          <p style={s.loginSub}>{t.tagline}</p>
+          <input id="email" type="email" placeholder={t.emailPlaceholder} style={{ ...s.input, marginBottom: 8 }} />
+          <input id="password" type="password" placeholder={t.passwordPlaceholder} style={{ ...s.input, marginBottom: 16 }} />
           <button style={s.btnPrimary} onClick={() => {
             const email = document.getElementById("email").value;
             const password = document.getElementById("password").value;
-            if (!email || !password) return alert("请填写邮箱和密码");
+            if (!email || !password) return alert(lang === "zh" ? "请填写邮箱和密码" : "Please enter email and password");
             import("firebase/auth").then(({ signInWithEmailAndPassword, createUserWithEmailAndPassword }) => {
               signInWithEmailAndPassword(auth, email, password)
                 .catch(() => createUserWithEmailAndPassword(auth, email, password)
                   .catch(err => alert(err.message)));
             });
           }}>
-            一键登录 / 注册
+            {t.login}
           </button>
         </div>
       </div>
@@ -538,8 +617,10 @@ export default function App() {
   return (
     <div style={s.container}>
       <header style={s.header}>
-        <span style={s.logo}>⚡ 氛围</span>
+        <span style={s.logo}>⚡ {t.appName}</span>
         <div style={s.headerRight}>
+          <button style={{ ...s.btnSmall, padding: "3px 8px", fontSize: 11, fontWeight: lang === "zh" ? 700 : 400 }} onClick={() => setLang("zh")}>中</button>
+          <button style={{ ...s.btnSmall, padding: "3px 8px", fontSize: 11, fontWeight: lang === "en" ? 700 : 400 }} onClick={() => setLang("en")}>EN</button>
           <span style={s.userLabel} onClick={() => openProfile(user.uid, profile?.nickname)}>
             <span style={{
               display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -549,15 +630,15 @@ export default function App() {
             }}>{profile?.nickname?.[0]?.toUpperCase()}</span>
             {profile?.nickname}
           </span>
-          <button style={s.btnSmall} onClick={() => signOut(auth)}>退出</button>
+          <button style={s.btnSmall} onClick={() => signOut(auth)}>{t.logout}</button>
         </div>
       </header>
 
       <nav style={s.nav}>
         {[
-          { key: "feed", label: "广场" },
-          { key: "match", label: "匹配" },
-          { key: "chats", label: totalUnread > 0 ? `消息 ${totalUnread}` : "消息" },
+          { key: "feed", label: t.feed },
+          { key: "match", label: t.match },
+          { key: "chats", label: totalUnread > 0 ? `${t.chats} ${totalUnread}` : t.chats },
         ].map(({ key, label }) => (
           <button key={key}
             style={{ ...s.navBtn, ...(view === key ? s.navBtnActive : {}), ...(key === "chats" && totalUnread > 0 ? { color: view === key ? "#fff" : "#f97316" } : {}) }}
@@ -570,49 +651,49 @@ export default function App() {
       {(view === "feed" || view === "match") && (
         <>
           <div style={s.quotaBar}>
-            <span style={{ color: "#666", fontSize: 13 }}>今日匹配额度</span>
+            <span style={{ color: "#666", fontSize: 13 }}>{t.quotaBar}</span>
             <div style={s.quotaDots}>
               {Array.from({ length: totalQuota }).map((_, i) => (
                 <div key={i} style={{ ...s.quotaDot, background: i < myTodayMatchCount ? "#f97316" : "#e5e7eb" }} />
               ))}
             </div>
-            <span style={{ color: remaining > 0 ? "#f97316" : "#aaa", fontSize: 13 }}>剩余 {remaining} 条</span>
+            <span style={{ color: remaining > 0 ? "#f97316" : "#aaa", fontSize: 13 }}>{t.remaining(remaining)}</span>
           </div>
 
           {remaining === 0 && (
             <div style={s.inviteBanner}>
-              🎁 今日额度已用完 · <span style={{ color: "#f97316", cursor: "pointer", fontWeight: 600 }}
+              🎁 {t.quotaUsed} <span style={{ color: "#f97316", cursor: "pointer", fontWeight: 600 }}
                 onClick={() => {
                   const link = `${window.location.origin}?ref=${user.uid}`;
                   navigator.clipboard?.writeText(link);
-                  alert(`邀请链接已复制！\n${link}\n邀请1位好友注册，获得额外3条额度`);
+                  alert(t.inviteAlert(link));
                 }}>
-                邀请好友解锁额外3条 →
+                {t.inviteText}
               </span>
             </div>
           )}
 
           <div style={s.card}>
             <div style={s.cardTitle}>
-              <span>{isMatchPost ? "📍 发布匹配动态" : "✏️ 普通动态"}</span>
+              <span>{isMatchPost ? `📍 ${t.postMatch}` : `✏️ ${t.postNormal}`}</span>
               <div style={s.postTypeToggle}>
-                <button style={{ ...s.typeBtn, ...(isMatchPost ? s.typeBtnActive : {}) }} onClick={() => setIsMatchPost(true)}>匹配</button>
-                <button style={{ ...s.typeBtn, ...(!isMatchPost ? s.typeBtnActive : {}) }} onClick={() => setIsMatchPost(false)}>普通</button>
+                <button style={{ ...s.typeBtn, ...(isMatchPost ? s.typeBtnActive : {}) }} onClick={() => setIsMatchPost(true)}>{t.postMatch}</button>
+                <button style={{ ...s.typeBtn, ...(!isMatchPost ? s.typeBtnActive : {}) }} onClick={() => setIsMatchPost(false)}>{t.postNormal}</button>
               </div>
             </div>
 
             {isMatchPost && (
               <>
-                <div style={s.fieldLabel}>今天的模式</div>
+                <div style={s.fieldLabel}>{t.modeLabel}</div>
                 <div style={s.tagRow}>
                   {MODE_OPTIONS.map(m => (
                     <button key={m} style={{ ...s.tag, ...(mode === m ? s.tagActive : {}) }} onClick={() => setMode(m)}>{m}</button>
                   ))}
                 </div>
-                <div style={s.fieldLabel}>需求标签（最多3个）</div>
+                <div style={s.fieldLabel}>{t.tagLabel}</div>
                 <div style={s.tagRow}>
-                  {TAG_OPTIONS.map(t => (
-                    <button key={t} style={{ ...s.tag, ...(tags.includes(t) ? s.tagActive : {}) }} onClick={() => toggleTag(t)}>{t}</button>
+                  {TAG_OPTIONS.map(tg => (
+                    <button key={tg} style={{ ...s.tag, ...(tags.includes(tg) ? s.tagActive : {}) }} onClick={() => toggleTag(tg)}>{tg}</button>
                   ))}
                 </div>
               </>
@@ -630,13 +711,12 @@ export default function App() {
               <div style={s.charCount}>{postText.length}/200</div>
             </div>
 
-            {/* 可见性设置 */}
-            <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-              <span style={s.fieldLabel}>可见性：</span>
+            <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <span style={s.fieldLabel}>{t.visibility}：</span>
               {[
-                { val: "public", label: "🌐 公开" },
-                { val: "followers", label: "👥 粉丝" },
-                { val: "mutual", label: "🔒 互关" },
+                { val: "public", label: t.public },
+                { val: "followers", label: t.followers },
+                { val: "mutual", label: t.mutual },
               ].map(({ val, label }) => (
                 <button key={val}
                   style={{ ...s.typeBtn, ...(postVisibility === val ? s.typeBtnActive : {}) }}
@@ -651,8 +731,8 @@ export default function App() {
               disabled={isMatchPost && remaining === 0}
             >
               {isMatchPost
-                ? remaining === 0 ? "今日匹配额度已满" : `发布（剩余 ${remaining} 条）`
-                : "发布普通动态"
+                ? remaining === 0 ? t.quotaFull : t.publishRemaining(remaining)
+                : t.postNormal
               }
             </button>
           </div>
@@ -662,8 +742,8 @@ export default function App() {
       {/* 广场 */}
       {view === "feed" && (
         <div>
-          <div style={s.sectionTitle}>今日动态</div>
-          {publicPosts.length === 0 && <div style={s.empty}>暂无动态，快来发第一条吧</div>}
+          <div style={s.sectionTitle}>{t.todayPosts}</div>
+          {publicPosts.length === 0 && <div style={s.empty}>{t.noPosts}</div>}
           {publicPosts.map(post => (
             <PostCard key={post.id} post={post} user={user} profile={profile}
               commentInputs={commentInputs} setCommentInputs={setCommentInputs}
@@ -671,7 +751,7 @@ export default function App() {
               onLike={handleLike} onComment={handleComment}
               onChat={openChat} onProfile={openProfile} onTopic={openTopic}
               onUpgrade={myTodayMatchCount < totalQuota ? setUpgradeTarget : null}
-              isWithin24h={isWithin24h}
+              isWithin24h={isWithin24h} t={t}
             />
           ))}
         </div>
@@ -680,29 +760,29 @@ export default function App() {
       {/* 匹配 */}
       {view === "match" && (
         <div>
-          <div style={s.sectionTitle}>🎯 今日匹配</div>
+          <div style={s.sectionTitle}>🎯 {t.todayMatch}</div>
           {myTodayMatchPosts.length === 0 && (
             <div style={s.emptyMatch}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>🎯</div>
-              <div>先发布匹配动态，才能开始匹配</div>
+              <div>{t.needPost}</div>
             </div>
           )}
           {myTodayMatchPosts.length > 0 && !hasMatched && (
             <div style={{ textAlign: "center", padding: 24 }}>
-              <button style={s.btnPrimary} onClick={handleMatch}>开始匹配</button>
+              <button style={s.btnPrimary} onClick={handleMatch}>{t.startMatch}</button>
             </div>
           )}
           {matchLoading && (
             <div style={s.emptyMatch}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>⚡</div>
-              <div>匹配中...</div>
+              <div>{t.matching}</div>
             </div>
           )}
           {hasMatched && !matchLoading && matchResults.length === 0 && (
             <div style={s.emptyMatch}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
-              <div style={{ marginBottom: 16 }}>暂时没有匹配的人，稍后再试～</div>
-              <button style={s.btnPrimary} onClick={handleMatch}>重新匹配</button>
+              <div style={{ marginBottom: 16 }}>{t.noMatch}</div>
+              <button style={s.btnPrimary} onClick={handleMatch}>{t.rematch}</button>
             </div>
           )}
           {matchResults.map(post => (
@@ -714,15 +794,15 @@ export default function App() {
                 </div>
                 <div>
                   <div style={s.username}>{post.user}</div>
-                  <div style={s.matchScore}>匹配度 {Math.round((post.score || 0) * 100)}%</div>
+                  <div style={s.matchScore}>{t.matchScore(Math.round((post.score || 0) * 100))}</div>
                 </div>
               </div>
               <div style={s.tagRow}>
-                {post.tags?.map(t => <span key={t} style={s.tagBadge}>{t}</span>)}
+                {post.tags?.map(tg => <span key={tg} style={s.tagBadge}>{tg}</span>)}
               </div>
               {post.note && <div style={s.noteText}>{renderRichText(post.note)}</div>}
               <button style={s.btnPrimary} onClick={() => openChat(post.userId, post.user)}>
-                💬 发起聊天
+                {t.startChat}
               </button>
             </div>
           ))}
@@ -732,13 +812,13 @@ export default function App() {
       {/* 聊天列表 */}
       {view === "chats" && (
         <div>
-          <div style={s.sectionTitle}>💬 消息</div>
+          <div style={s.sectionTitle}>💬 {t.chats}</div>
           {chatList.length === 0 && (
-            <div style={s.empty}>还没有聊天记录，去匹配认识新朋友吧</div>
+            <div style={s.empty}>{t.noChats}</div>
           )}
           {chatList.map(chat => {
             const otherId = chat.users.find(id => id !== user.uid);
-            const otherName = chat.nicknames?.[otherId] || "用户";
+            const otherName = chat.nicknames?.[otherId] || "User";
             const unread = unreadCounts[chat.id] || 0;
             return (
               <div key={chat.id} style={{ ...s.card, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
@@ -748,7 +828,7 @@ export default function App() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{otherName}</div>
-                  <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>点击继续聊天</div>
+                  <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>{t.clickChat}</div>
                 </div>
                 {unread > 0 && (
                   <div style={s.unreadBadge}>{unread}</div>
@@ -759,11 +839,11 @@ export default function App() {
         </div>
       )}
 
-      {/* 聊天窗口 */}
+      {/* 聊天窗口 - 加头像 */}
       {view === "chat" && chatTarget && (
         <div style={s.chatBox}>
           <div style={s.chatHeader}>
-            <button style={s.btnSmall} onClick={() => setView("chats")}>← 返回</button>
+            <button style={s.btnSmall} onClick={() => setView("chats")}>{t.back}</button>
             <span style={{ fontWeight: 600, cursor: "pointer" }}
               onClick={() => openProfile(chatTarget.userId, chatTarget.nickname)}>
               <span style={{
@@ -774,26 +854,50 @@ export default function App() {
               }}>{chatTarget.nickname?.[0]}</span>
               {chatTarget.nickname}
             </span>
-            <button style={s.btnSmall} onClick={() => { setChatTarget(null); setView("feed"); }}>关闭</button>
+            <button style={s.btnSmall} onClick={() => { setChatTarget(null); setView("feed"); }}>{t.close}</button>
           </div>
           <div style={s.messageList}>
-            {messages.length === 0 && <div style={{ ...s.empty, padding: 20 }}>发个消息打个招呼吧 👋</div>}
-            {messages.map((m, i) => (
-              <div key={i} style={{
-                ...s.messageBubble,
-                alignSelf: m.fromId === user.uid ? "flex-end" : "flex-start",
-                background: m.fromId === user.uid ? "#f97316" : "#f3f4f6",
-                color: m.fromId === user.uid ? "#fff" : "#111",
-              }}>{m.text}</div>
-            ))}
+            {messages.length === 0 && <div style={{ ...s.empty, padding: 20 }}>{t.noMessages}</div>}
+            {messages.map((m, i) => {
+              const isMine = m.fromId === user.uid;
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "flex-end", gap: 6, flexDirection: isMine ? "row-reverse" : "row" }}>
+                  {!isMine && (
+                    <div style={{
+                      width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                      background: getAvatarColor(chatTarget.userId), color: "#fff",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    }} onClick={() => openProfile(chatTarget.userId, chatTarget.nickname)}>
+                      {chatTarget.nickname?.[0]}
+                    </div>
+                  )}
+                  {isMine && (
+                    <div style={{
+                      width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                      background: getAvatarColor(user.uid), color: "#fff",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12, fontWeight: 700,
+                    }}>
+                      {profile?.nickname?.[0]}
+                    </div>
+                  )}
+                  <div style={{
+                    ...s.messageBubble,
+                    background: isMine ? "#f97316" : "#f3f4f6",
+                    color: isMine ? "#fff" : "#111",
+                  }}>{m.text}</div>
+                </div>
+              );
+            })}
           </div>
           <div style={s.chatInputRow}>
             <input style={{ ...s.input, flex: 1, marginBottom: 0 }}
-              value={chatInput} placeholder="说点什么..."
+              value={chatInput} placeholder={t.sendHint}
               onChange={e => setChatInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && sendMessage()}
             />
-            <button style={s.btnOrange} onClick={sendMessage}>发送</button>
+            <button style={s.btnOrange} onClick={sendMessage}>{t.send}</button>
           </div>
         </div>
       )}
@@ -801,42 +905,38 @@ export default function App() {
       {/* 个人主页 */}
       {view === "profile" && profileTarget && (
         <div>
-          <button style={{ ...s.btnSmall, marginBottom: 12 }} onClick={() => setView("feed")}>← 返回</button>
+          <button style={{ ...s.btnSmall, marginBottom: 12 }} onClick={() => setView("feed")}>{t.back}</button>
           <div style={s.profileCard}>
-            <div style={{
-              ...s.profileAvatar,
-              background: getAvatarColor(profileTarget.userId),
-            }}>{profileTarget.nickname?.[0]?.toUpperCase()}</div>
+            <div style={{ ...s.profileAvatar, background: getAvatarColor(profileTarget.userId) }}>
+              {profileTarget.nickname?.[0]?.toUpperCase()}
+            </div>
             <div style={s.profileName}>{profileTarget.nickname}</div>
             <div style={s.profileSub}>
-              {profilePosts.filter(p => p.isMatchPost).length} 条匹配动态 · {profilePosts.filter(p => !p.isMatchPost).length} 条普通动态
+              {t.matchPosts(profilePosts.filter(p => p.isMatchPost).length)} · {t.normalPosts(profilePosts.filter(p => !p.isMatchPost).length)}
             </div>
             {profileTarget.userId !== user.uid && (
               <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12 }}>
                 <button
-                  style={following.includes(profileTarget.userId)
-                    ? { ...s.btnSmall, marginTop: 0 }
-                    : { ...s.btnOrange }}
+                  style={following.includes(profileTarget.userId) ? { ...s.btnSmall, marginTop: 0 } : { ...s.btnOrange }}
                   onClick={() => handleFollow(profileTarget.userId)}
                 >
-                  {following.includes(profileTarget.userId) ? "✓ 已关注" : "+ 关注"}
+                  {following.includes(profileTarget.userId) ? t.following : t.follow}
                 </button>
-                <button style={s.btnOrange}
-                  onClick={() => openChat(profileTarget.userId, profileTarget.nickname)}>
-                  💬 发消息
+                <button style={s.btnOrange} onClick={() => openChat(profileTarget.userId, profileTarget.nickname)}>
+                  {t.message}
                 </button>
               </div>
             )}
           </div>
-          <div style={s.sectionTitle}>全部动态</div>
-          {profilePosts.length === 0 && <div style={s.empty}>暂无动态</div>}
+          <div style={s.sectionTitle}>{t.allPosts}</div>
+          {profilePosts.length === 0 && <div style={s.empty}>{t.noPosts2}</div>}
           {profilePosts.map(post => (
             <PostCard key={post.id} post={post} user={user} profile={profile}
               commentInputs={commentInputs} setCommentInputs={setCommentInputs}
               openComments={openComments} setOpenComments={setOpenComments}
               onLike={handleLike} onComment={handleComment}
               onChat={openChat} onProfile={openProfile} onTopic={openTopic}
-              isWithin24h={isWithin24h}
+              isWithin24h={isWithin24h} t={t}
             />
           ))}
         </div>
@@ -845,16 +945,16 @@ export default function App() {
       {/* 话题页 */}
       {view === "topic" && (
         <div>
-          <button style={{ ...s.btnSmall, marginBottom: 12 }} onClick={() => setView("feed")}>← 返回</button>
+          <button style={{ ...s.btnSmall, marginBottom: 12 }} onClick={() => setView("feed")}>{t.back}</button>
           <div style={s.sectionTitle}># {currentTopic}</div>
-          {topicPosts.length === 0 && <div style={s.empty}>暂无相关动态</div>}
+          {topicPosts.length === 0 && <div style={s.empty}>{t.noPosts2}</div>}
           {topicPosts.map(post => (
             <PostCard key={post.id} post={post} user={user} profile={profile}
               commentInputs={commentInputs} setCommentInputs={setCommentInputs}
               openComments={openComments} setOpenComments={setOpenComments}
               onLike={handleLike} onComment={handleComment}
               onChat={openChat} onProfile={openProfile} onTopic={openTopic}
-              isWithin24h={isWithin24h}
+              isWithin24h={isWithin24h} t={t}
             />
           ))}
         </div>
@@ -864,11 +964,11 @@ export default function App() {
       {upgradeTarget && (
         <div style={s.overlay}>
           <div style={s.modal}>
-            <div style={s.modalTitle}>升级为匹配动态？</div>
-            <div style={s.modalSub}>将占用今日 1 条匹配额度（剩余 {remaining} 条），升级后参与今日匹配。</div>
-            <button style={s.btnPrimary} onClick={() => handleUpgrade(upgradeTarget)}>确认升级</button>
+            <div style={s.modalTitle}>{t.upgradeTitle}</div>
+            <div style={s.modalSub}>{t.upgradeSub(remaining)}</div>
+            <button style={s.btnPrimary} onClick={() => handleUpgrade(upgradeTarget)}>{t.upgradeConfirm}</button>
             <button style={{ ...s.btnSmall, marginTop: 8, width: "100%", textAlign: "center" }}
-              onClick={() => setUpgradeTarget(null)}>取消</button>
+              onClick={() => setUpgradeTarget(null)}>{t.cancel}</button>
           </div>
         </div>
       )}
@@ -877,7 +977,7 @@ export default function App() {
 }
 
 function PostCard({ post, user, profile, commentInputs, setCommentInputs,
-  openComments, setOpenComments, onLike, onComment, onChat, onProfile, onTopic, onUpgrade, isWithin24h }) {
+  openComments, setOpenComments, onLike, onComment, onChat, onProfile, onTopic, onUpgrade, isWithin24h, t = LANG.zh }) {
   const liked = post.likes?.includes(user?.uid);
   const showComment = openComments[post.id];
   const expired = !isWithin24h(post.createdAt);
@@ -895,28 +995,28 @@ function PostCard({ post, user, profile, commentInputs, setCommentInputs,
             {post.date === new Date().toISOString().slice(0, 10) ? "今天" : post.date}
             {post.isMatchPost
               ? <span style={{ ...s.matchBadge, ...(expired ? { opacity: 0.5 } : {}) }}>
-                  {expired ? "已过期" : "匹配"}
+                  {expired ? (t === LANG.en ? "Expired" : "已过期") : (t === LANG.en ? "Match" : "匹配")}
                 </span>
-              : <span style={s.normalBadge}>普通</span>
+              : <span style={s.normalBadge}>{t === LANG.en ? "Normal" : "普通"}</span>
             }
             {post.visibility === "mutual" && <span style={s.visibilityBadge}>🔒</span>}
             {post.visibility === "followers" && <span style={s.visibilityBadge}>👥</span>}
           </div>
         </div>
         {user && post.userId === user.uid && !post.isMatchPost && onUpgrade && (
-          <button style={s.upgradeBtn} onClick={() => onUpgrade(post)}>升级匹配</button>
+          <button style={s.upgradeBtn} onClick={() => onUpgrade(post)}>{t.upgradeMatch}</button>
         )}
       </div>
       {post.tags?.length > 0 && (
         <div style={s.tagRow}>
-          {post.tags.map(t => <span key={t} style={s.tagBadge}>{t}</span>)}
+          {post.tags.map(tg => <span key={tg} style={s.tagBadge}>{tg}</span>)}
         </div>
       )}
       <div style={s.postContent}>{renderRichText(post.content || "")}</div>
       {post.topics?.length > 0 && (
         <div style={s.tagRow}>
-          {post.topics.map(t => (
-            <span key={t} style={s.topicBadge} onClick={() => onTopic(t)}>#{t}</span>
+          {post.topics.map(tg => (
+            <span key={tg} style={s.topicBadge} onClick={() => onTopic(tg)}>#{tg}</span>
           ))}
         </div>
       )}
@@ -929,23 +1029,40 @@ function PostCard({ post, user, profile, commentInputs, setCommentInputs,
           💬 {post.comments?.length || 0}
         </button>
         {user && post.userId !== user.uid && (
-          <button style={s.actionBtn} onClick={() => onChat(post.userId, post.user)}>✉️ 聊聊</button>
+          <button style={s.actionBtn} onClick={() => onChat(post.userId, post.user)}>✉️ {t === LANG.en ? "Chat" : "聊聊"}</button>
         )}
       </div>
       {showComment && (
         <div style={s.commentSection}>
           {post.comments?.map((c, i) => (
-            <div key={i} style={s.commentItem}><b>{c.user}:</b> {c.text}</div>
+            <div key={i} style={{ ...s.commentItem, display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
+              <div style={{
+                width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+                background: getAvatarColor(c.userId || c.user),
+                color: "#fff", display: "flex", alignItems: "center",
+                justifyContent: "center", fontSize: 11, fontWeight: 700,
+                cursor: c.userId ? "pointer" : "default",
+              }} onClick={() => c.userId && onProfile(c.userId, c.user)}>
+                {c.user?.[0]}
+              </div>
+              <div>
+                <span style={{ fontWeight: 600, fontSize: 13, cursor: c.userId ? "pointer" : "default", color: "#333" }}
+                  onClick={() => c.userId && onProfile(c.userId, c.user)}>
+                  {c.user}
+                </span>
+                <span style={{ fontSize: 13, color: "#555", marginLeft: 6 }}>{c.text}</span>
+              </div>
+            </div>
           ))}
           {user && (
             <div style={s.commentInputRow}>
               <input style={{ ...s.input, flex: 1, marginBottom: 0 }}
-                placeholder="写评论..."
+                placeholder={t.writeComment}
                 value={commentInputs[post.id] || ""}
                 onChange={e => setCommentInputs({ ...commentInputs, [post.id]: e.target.value })}
                 onKeyDown={e => e.key === "Enter" && onComment(post)}
               />
-              <button style={s.btnSmall} onClick={() => onComment(post)}>发送</button>
+              <button style={s.btnSmall} onClick={() => onComment(post)}>{t.commentSend}</button>
             </div>
           )}
         </div>
