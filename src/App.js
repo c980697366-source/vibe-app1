@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import { db, auth, provider } from "./firebase";
+import { db, auth } from "./firebase";
 import {
   collection, addDoc, getDocs, query, orderBy,
   doc, updateDoc, arrayUnion, onSnapshot,
   where, setDoc, getDoc
 } from "firebase/firestore";
-import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { signOut, onAuthStateChanged } from "firebase/auth";
 
 const MATCH_QUOTA = 3;
 
