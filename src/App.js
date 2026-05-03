@@ -114,16 +114,16 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  const fetchPosts = async () => {
+const fetchPosts = useCallback(async () => {
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
     const snap = await getDocs(q);
-    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     setPosts(list);
     if (user) {
       const count = list.filter(p => p.userId === user.uid && p.date === todayStr() && p.isMatchPost).length;
       setMyTodayMatchCount(count);
     }
-  };
+  }, [user]);
 
   useEffect(() => { fetchPosts(); }, [user,fetchPosts]);
 
