@@ -473,7 +473,7 @@ export default function App() {
   return (
     <div style={s.container}>
       <header style={s.header}>
-        <span style={s.logo}>⚡ 氛围</span>
+        <span style={s.logo}>⚡ vibe</span>
         <div style={s.headerRight}>
           <span style={s.userLabel} onClick={() => openProfile(user.uid, profile?.nickname)}>
             <span style={{
