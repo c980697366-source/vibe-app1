@@ -289,16 +289,25 @@ const fetchPosts = useCallback(async () => {
         )}
       </header>
 
-      {!user && (
-        <div style={s.loginBox}>
-          <div style={s.loginEmoji}>⚡</div>
-          <h2 style={s.loginTitle}>找到今天需要的人</h2>
-          <p style={s.loginSub}>每天更新状态，匹配此刻互补的人</p>
-          <button style={s.btnPrimary} onClick={() => signInWithPopup(auth, provider)}>
-            用 Google 登录
-          </button>
-        </div>
-      )}
+{!user && (
+  <div style={s.loginBox}>
+    <div style={s.loginEmoji}>⚡</div>
+    <h2 style={s.loginTitle}>找到今天需要的人</h2>
+    <p style={s.loginSub}>每天更新状态，匹配此刻互补的人</p>
+    <input id="email" type="email" placeholder="输入邮箱" style={{...s.input, marginBottom: 8}} />
+    <input id="password" type="password" placeholder="输入密码" style={{...s.input, marginBottom: 16}} />
+    <button style={s.btnPrimary} onClick={() => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      import("firebase/auth").then(({ signInWithEmailAndPassword, createUserWithEmailAndPassword }) => {
+        signInWithEmailAndPassword(auth, email, password)
+          .catch(() => createUserWithEmailAndPassword(auth, email, password));
+      });
+    }}>
+      一键登录 / 注册
+    </button>
+  </div>
+)}
 
       {user && (
         <>
