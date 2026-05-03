@@ -299,22 +299,9 @@ const fetchPosts = useCallback(async () => {
 <button style={s.btnPrimary} onClick={() => {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
-  import("firebase/auth").then(({ signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification }) => {
+  import("firebase/auth").then(({ signInWithEmailAndPassword, createUserWithEmailAndPassword }) => {
     signInWithEmailAndPassword(auth, email, password)
-      .then((uc) => {
-        if (!uc.user.emailVerified) {
-          alert("请先验证邮箱，验证邮件已发送，请检查收件箱！");
-          sendEmailVerification(uc.user);
-          signOut(auth);
-        }
-      })
-      .catch(() => createUserWithEmailAndPassword(auth, email, password)
-        .then((uc) => {
-          sendEmailVerification(uc.user);
-          alert("注册成功！验证邮件已发送，请检查收件箱后再登录。");
-          signOut(auth);
-        })
-      );
+      .catch(() => createUserWithEmailAndPassword(auth, email, password));
   });
 }}>
   一键登录 / 注册
