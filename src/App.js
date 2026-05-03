@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { db, auth, provider } from "./firebase";
 import {
   collection, addDoc, getDocs, query, orderBy,
@@ -125,7 +125,7 @@ export default function App() {
     }
   };
 
-  useEffect(() => { fetchPosts(); }, [user]);
+  useEffect(() => { fetchPosts(); }, [user,fetchPosts]);
 
   const toggleTag = (tag) => {
     setTags(prev =>
